@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Record Search Portal
 
-## Getting Started
+A small internal tool for searching POSP associate records stored in Supabase. Type
+any value — name, phone number, email, Aadhar, PAN, bank account, IFSC code — and
+get back the matching record(s), or use Advanced search to filter on specific
+fields at once.
 
-First, run the development server:
+## Stack
+
+- Next.js (App Router, TypeScript, Tailwind CSS)
+- Supabase (Postgres) as the data store, queried server-side only
+
+## Setup
+
+**1. Install dependencies**
+
+```bash
+npm install
+```
+
+**2. Environment variables**
+
+Create a `.env.local` file in the project root (never committed — already
+gitignored) with:
+
+```
+SUPABASE_URL=your-supabase-project-url
+SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+These are read server-side only (`src/lib/supabase-server.ts`) and are never sent
+to the browser.
+
+**3. Database table**
+
+The app expects a `posp_records` table with these columns (all nullable text
+unless noted):
+
+```
+associate_name, associate_id, type, onboarding_id, document_recv_date (date),
+pos_name, contact_number, email, city, pin_code, aadhar_number, pan_number,
+dob (date), gst_number, marsheet, bank_name, account_number, ifsc_code
+```
+
+Create it via the Supabase SQL Editor, with Row Level Security enabled and a
+policy allowing `select` for the `anon` role (the app only ever reads).
+
+**4. Run the dev server**
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How search works
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Simple search**: one search box, matched with `ILIKE` across every text
+  column (OR logic) — a single term can hit a name, phone number, PAN, etc.
+- **Advanced search**: a form with one input per field, combined with AND logic,
+  for narrowing down to a specific record.
+- Results are paginated server-side, 10 records per page.
 
-## Learn More
+## Deployment
 
-To learn more about Next.js, take a look at the following resources:
+Deployed on Vercel. Add `SUPABASE_URL` and `SUPABASE_ANON_KEY` under
+**Project → Settings → Environment Variables** before deploying — the build will
+fail without them.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Data sensitivity
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This table holds PII (Aadhar, PAN, bank account numbers). Keep the deployed URL
+and Supabase credentials private, and don't widen access beyond who actually
+needs it.
